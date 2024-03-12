@@ -10,12 +10,12 @@ import shutil
 import multiprocessing
 import traceback
 from multiprocessing.pool import Pool
-from src.utils.bh_kmeans import bh_kmeans
+from utils.bh_kmeans import bh_kmeans
 import numpy as np
 import glob
 from collections import defaultdict
 import argparse
-from src.utils.util import get_binning_result
+from utils.utils import get_binning_result
 
 
 def fasta_iter(fname, full_header=False):
