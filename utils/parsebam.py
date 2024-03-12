@@ -48,7 +48,7 @@ import os as _os
 import multiprocessing as _multiprocessing
 import numpy as _np
 import time as _time
-from src.utils import vambtools as _vambtools
+from utils import vambtools as _vambtools
 
 DEFAULT_SUBPROCESSES = min(8, _os.cpu_count())
 

@@ -8,7 +8,7 @@ Usage:
 import sys as _sys
 import os as _os
 import numpy as _np
-import src.utils.vambtools as _vambtools
+import utils.vambtools as _vambtools
 
 # This kernel is created in src/create_kernel.py. See that file for explanation
 _KERNEL = _vambtools.read_npz(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)),
