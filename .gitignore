@@ -1,5 +1,13 @@
 # DeepMetaBin out
 deepmetabin_out/
+contignames.npz
+data.zarr/
+lengths.npz
+log.txt
+rpkm.npz
+tmp_hmmsearch/
+tnf.npz
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

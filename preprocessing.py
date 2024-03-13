@@ -14,19 +14,19 @@ import zarr
 from tqdm import trange
 from absl import app, flags
 
-from src.utils.util import (
+from utils.utils import (
     summary_bin_list_from_csv,
     load_graph,
     describe_dataset,
 )
 
-from src.utils import (
+from utils import (
     parsebam,
     parsecontigs,
     vambtools
 )
 
-from src.utils.calculate_bin_num import gen_cannot_link as cal_num_bins
+from utils.calculate_bin_num import gen_cannot_link as cal_num_bins
 
 
 
