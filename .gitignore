@@ -7,7 +7,7 @@ log.txt
 rpkm.npz
 tmp_hmmsearch/
 tnf.npz
-
+nohup.out
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
