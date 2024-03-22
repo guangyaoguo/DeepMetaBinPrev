@@ -8,6 +8,8 @@ rpkm.npz
 tmp_hmmsearch/
 tnf.npz
 nohup.out
+deepmetabin_out_cami1_m/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

@@ -411,7 +411,7 @@ if __name__ == "__main__":
             ml_indices, cl_indices = purify_must_link(ml_indices, cl_indices)
             if n_clusters <= 1:
                 n_clusters = 2
-            labels = bh_kmeans(bin_data, n_clusters, ml=ml_indices, cl=cl_indices, p=3, random_state=2021, time_limit=1200)
+            labels = bh_kmeans(bin_data, n_clusters, ml=ml_indices, cl=cl_indices, p=3, random_state=2021, time_limit=1800)
             post_bin = defaultdict(list)
             for l, contigname in zip(labels, target_contig):
                 post_bin[str(cluster_num) + '_' + str(l)].append(str(contigname))
