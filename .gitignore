@@ -9,6 +9,7 @@ tmp_hmmsearch/
 tnf.npz
 nohup.out
 deepmetabin_out_cami1_m/
+best_model.pth
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -13,7 +13,7 @@ count=0
 while IFS=$'\t' read -r name completeness contamination _ _ _ _ _ _ _ _ _ _ _
 do
     # 检查 completeness 大于 90% 且 contamination 小于 5%
-    if (( $(echo "$completeness > 90" | bc -l) && $(echo "$contamination < 5" | bc -l) )); then
+    if [ "$(echo "$completeness > 90" | bc -l)" -eq 1 ] && [ "$(echo "$contamination < 5" | bc -l)" -eq 1 ]; then
         count=$((count+1))
     fi
 done < "$1"

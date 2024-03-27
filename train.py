@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 from pathlib import Path
 
-from utils.utils import seed_everything, Wandb_logger, _optimizer
+from utils.utils import seed_everything, Wandb_logger, _optimizer, coverage_score
 from model.pipeline import Pipeline
 from model.graph_gmvae import DeepMetaBinModel
 
@@ -99,6 +99,10 @@ def main():
                         epoch=args.num_epoch)
      ######Training the model######
     logging.info("Start Training...")
+    patience_counter = 0
+    best_coverage = 0
+    patience = 5
+    gmmcsv_path = os.path.join(args.output, 'results/gmm.csv')
     for epoch in range(args.num_epoch):
         logging.info(f"Epoch ({epoch}/{args.num_epoch})")
         model.train()
@@ -111,14 +115,33 @@ def main():
         logging.info(f'loss: {loss}')
         scheduler.step()
 
-    logging.info('Finish training!')
-    
-    model.eval()
-    with torch.no_grad():
-        for batch in val_loader:
-            model.validation_step(batch)
-    logging.info("Wrote contigs into bins")
+        model.eval()
+        with torch.no_grad():
+            for batch in val_loader:
+                model.validation_step(batch)
+        
+        coverage = coverage_score(gmmcsv_path)
 
+        if coverage > best_coverage:
+            best_coverage = coverage
+            patience_counter = 0
+            torch.save(model.state_dict(), 'best_model.pth')
+        else:
+            patience_counter += 1
+            if patience_counter >= patience:
+                model.load_state_dict(torch.load('best_model.pth'))
+                model.eval()
+                with torch.no_grad():
+                    for batch in val_loader:
+                        model.validation_step(batch)
+                logging.info('Early stopping triggered, best model restored')
+                break
+
+        logging.info("Wrote contigs into bins")
+        logging.info('Finish training!')
+    
+
+    
 
 
 

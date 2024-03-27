@@ -4,8 +4,8 @@ set -xe
 # contigs=`pwd`/$3
 
 reads=$1
-contigs=$3
-output=$4
+contigs=$2
+output=$3
 
 if [ ! -d $output ]
 then
