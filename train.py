@@ -8,6 +8,7 @@ from tqdm import tqdm
 import argparse
 from pathlib import Path
 import numpy as np
+import zarr
 from pathlib import Path
 
 from utils.utils import seed_everything, Wandb_logger, _optimizer, coverage_score
@@ -59,6 +60,9 @@ def main():
     seed_everything(args.seed)
 
     ######Pipeline######
+    root = zarr.open(zarr_dataset_path, mode="r")
+    num_bins = root.attrs["num_bins"]
+
     os.makedirs(args.output, exist_ok=True)
     pip = Pipeline(zarr_dataset_path=args.zarr_dataset_path,
                    k=args.KNN,
@@ -83,6 +87,7 @@ def main():
 
     model = DeepMetaBinModel(input_size=args.input_size,
                              gaussian_size=args.gaussian_size,
+                             num_bins = num_bins,
                              w_cat=args.w_cat,
                              w_gauss=args.w_gauss,
                              w_rec=args.w_rec,
@@ -99,6 +104,7 @@ def main():
                         epoch=args.num_epoch)
      ######Training the model######
     logging.info("Start Training...")
+
     patience_counter = 0
     best_coverage = 0
     patience = 5

@@ -1154,9 +1154,15 @@ def coverage_score(path):
     df['taxid'] = df['contig'].str.extract(r'kraken:taxid\|(\d+)')
     df = df[df['taxid'] != '0']
 
+    df2 = df.copy()
     max_length_per_taxid_cluster = df.groupby(['cluster', 'taxid'])['length'].sum().reset_index()
     total_length_per_taxid = df.groupby('taxid')['length'].sum().reset_index()
-    
+    total_length_per_cluster = df.groupby('cluster')['length'].sum().reset_index()
+    max_length_per_taxid_cluster_refined = max_length_per_taxid_cluster.groupby('cluster')['length'].idxmax()
+    max_length_per_taxid_cluster_filted = max_length_per_taxid_cluster.loc[max_length_per_taxid_cluster_refined]
+    merged_df_precision = pd.merge(max_length_per_taxid_cluster_filted, total_length_per_cluster, on='cluster', suffixes=('_major', '_total'))
+    merged_df_precision['precision'] = merged_df_precision['length_major']/ merged_df_precision['length_total']
+    precision = merged_df_precision['precision'].mean()
 
     merged_df = pd.merge(max_length_per_taxid_cluster, total_length_per_taxid, on='taxid', suffixes=('_max_cluster', '_total'))
 
@@ -1165,6 +1171,6 @@ def coverage_score(path):
     idx = merged_df.groupby('cluster')['length_max_cluster'].idxmax()
     filtered_df = merged_df.loc[idx]
     
-    cluster_avg_ratios = filtered_df['length_ratio'].mean()
+    recall = filtered_df['length_ratio'].mean()
 
-    return cluster_avg_ratios
+    return 2*recall*precision/(recall+precision)
