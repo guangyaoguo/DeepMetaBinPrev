@@ -3,6 +3,9 @@ set -xe
 # reads=`pwd`/$1
 # contigs=`pwd`/$3
 
+#cmd
+#nohup scripts/run_deepmetabin_inter.sh /datahome/datasets/ericteam/zmzhang/Benchmarking/reads/CAMI/medium/RM2_S001__insert_270.fq.gz /datahome/datasets/ericteam/zmzhang/Benchmarking/reads/CAMI/medium/metaspades_S001_done/contigs.fasta deepmetabin_out
+
 reads=$1
 contigs=$2
 output=$3

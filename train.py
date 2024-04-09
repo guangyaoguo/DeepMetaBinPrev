@@ -60,8 +60,6 @@ def main():
     seed_everything(args.seed)
 
     ######Pipeline######
-    root = zarr.open(zarr_dataset_path, mode="r")
-    num_bins = root.attrs["num_bins"]
 
     os.makedirs(args.output, exist_ok=True)
     pip = Pipeline(zarr_dataset_path=args.zarr_dataset_path,
@@ -87,7 +85,6 @@ def main():
 
     model = DeepMetaBinModel(input_size=args.input_size,
                              gaussian_size=args.gaussian_size,
-                             num_bins = num_bins,
                              w_cat=args.w_cat,
                              w_gauss=args.w_gauss,
                              w_rec=args.w_rec,

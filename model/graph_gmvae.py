@@ -22,7 +22,7 @@ class DeepMetaBinModel(nn.Module):
         self,
         input_size=104,
         gaussian_size=10,
-        num_classes=10,
+        num_classes=None,
         # lr=0.0001,
         w_cat=None,
         w_gauss=None,
@@ -62,11 +62,14 @@ class DeepMetaBinModel(nn.Module):
         Attrs:
         """
         super().__init__()
-        if num_classes is None:
+        if num_classes == None:
             root = zarr.open(zarr_dataset_path, mode="r")
-            self.num_classes = root.attrs["num_bins"]
-        else:
-            self.num_classes = num_classes
+            self.num_classes = 10
+            # self.num_classes = root.attrs["num_bins"]
+            print('~~~~~~~~~~~~~~~~~~~')
+            print(self.num_classes)
+            print('~~~~~~~~~~~~~~~~~~~')
+
         self.network = GMVAENet(
             x_dim = input_size,
             z_dim = gaussian_size,
@@ -185,10 +188,10 @@ class DeepMetaBinModel(nn.Module):
         # mask = np.load(mask_path)
         # mask = mask['arr_0']
         # contignames = ['NODE_'+str(m) for m in contignames]
-        
+
         fit_gmm(latent_feature, contignames, os.path.join(self.result_path, 'gmm.csv'), self.num_classes)
         get_binning_result(self.contig_path, os.path.join(self.result_path, 'gmm.csv'), os.path.join(self.result_path, 'pre_bins'))
-        
+
 
     # def configure_optimizers(self):
     #     return Adam(self.parameters(), lr=self.lr)
@@ -247,10 +250,10 @@ class DeepMetaBinModel(nn.Module):
     #     #wandb.log({"val/result_gmm_ag_subgraph": wandb.Image(gmm_result_ag_graph_path)})
     #     #wandb.log({"val/result_gmm_knn_subgraph": wandb.Image(gmm_result_knn_graph_path)})
 
-    # def if_stop(self, coverage, current_epoch, global_step):
-    #     patience = 10
+    # def if_stop(self, f1, current_epoch, global_step):
+    #     patience = 100
     #     max_epoch = 2000
-    #     self.epoch_list.append((coverage, current_epoch, global_step))
+    #     self.epoch_list.append((f1, current_epoch, global_step))
     #     current_best = max(self.epoch_list, key=lambda elem: elem[0])
     #     best_idx = self.epoch_list.index(current_best)
     #     if (len(self.epoch_list) - best_idx - 1 >= patience) or (current_epoch >= max_epoch):

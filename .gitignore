@@ -10,6 +10,8 @@ tnf.npz
 nohup.out
 deepmetabin_out_cami1_m/
 best_model.pth
+deepmetabin_out_cami1_m_f1/
+deepmetabin_out_cam1_m_true_filt/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

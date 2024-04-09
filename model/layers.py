@@ -31,7 +31,7 @@ class GumbelSoftmax(nn.Module):
     input: [*, n_class]
     return: flatten --> [*, n_class] an one-hot vector
     """
-    #categorical_dim = 10
+    # categorical_dim = 10
     y = self.gumbel_softmax_sample(logits, temperature)
 
     if not hard:

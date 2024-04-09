@@ -1151,7 +1151,10 @@ def coverage_score(path):
     df = pd.read_csv(path, sep='\t', header=None, names=['contig', 'cluster'])
 
     df['length'] = df['contig'].str.extract(r'length_(\d+)_').astype(int)
-    df['taxid'] = df['contig'].str.extract(r'kraken:taxid\|(\d+)')
+    # for true label
+    df['taxid'] = df['contig'].str.extract(r'taxid\|(.*)')
+    # for kraken labels
+    # df['taxid'] = df['contig'].str.extract(r'kraken:taxid\|(\d+)')
     df = df[df['taxid'] != '0']
 
     df2 = df.copy()

@@ -26,8 +26,6 @@ def coverage_score(path):
     
     recall = filtered_df['length_ratio'].mean()
 
-    root = zarr.open(zarr_dataset_path, mode="r")
-    num_bins = root.attrs["num_bins"]
 
 
     return 2*recall*precision/(recall+precision)
