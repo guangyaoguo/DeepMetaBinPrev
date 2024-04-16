@@ -28,6 +28,7 @@ from utils import (
 
 from utils.calculate_bin_num import gen_cannot_link as cal_num_bins
 
+# link 145 filter_threshold line 286 inputos.add_argument('-m', dest='minlength', metavar='', type=int, default=2500,
 
 
 
@@ -138,6 +139,7 @@ def create_contigs_zarr_dataset(
         # labels_path: str,
         tnf_attrs: str,
         rpkm_attrs: str,
+        # species_attrs: int,
         # ag_graph_path: str,
         # pe_graph_path: str,
         filter_threshold: int = 1000,

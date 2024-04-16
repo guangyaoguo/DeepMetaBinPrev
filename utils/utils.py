@@ -17,11 +17,13 @@ from sklearn.semi_supervised import LabelPropagation
 from sklearn.utils.extmath import safe_sparse_dot
 from sklearn.exceptions import ConvergenceWarning
 import warnings
-# from sklearn.mixture import GaussianMixture
+from sklearn.mixture import GaussianMixture
+# for speed(covariance matrix error) -> fit_gmm()
+# from pycave.bayes import GaussianMixture
 import os
 import logging
 import pprint
-from pycave.bayes import GaussianMixture
+
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
 import torch.nn as nn
@@ -1009,9 +1011,14 @@ class lbp(LabelPropagation):
 
 def fit_gmm(latents, contignames, output_csv_path, num_bins):
 
-    # gmm = GaussianMixture(n_components=num_bins, random_state=2021)
+    gmm = GaussianMixture(n_components=num_bins, random_state=2021)
+
     # config = GaussianMixtureModelConfig(num_components=2, num_features=3, covariance_type="full")
-    gmm = GaussianMixture(num_components=num_bins, covariance_type='full')
+
+    # pycave[
+    # gmm = GaussianMixture(num_components=num_bins, covariance_type='full')
+    # ]
+
     predicts = gmm.fit_predict(latents)
     # print(num_bins)
     # predic_probs = gmm.predict_proba(latents)
@@ -1153,6 +1160,7 @@ def coverage_score(path):
     df['length'] = df['contig'].str.extract(r'length_(\d+)_').astype(int)
     # for true label
     df['taxid'] = df['contig'].str.extract(r'taxid\|(.*)')
+    # df = df[df['taxid'] != '000000000']
     # for kraken labels
     # df['taxid'] = df['contig'].str.extract(r'kraken:taxid\|(\d+)')
     df = df[df['taxid'] != '0']

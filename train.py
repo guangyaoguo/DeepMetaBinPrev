@@ -11,9 +11,12 @@ import numpy as np
 import zarr
 from pathlib import Path
 
+from utils.cov import coverage_score as cov
+
 from utils.utils import seed_everything, Wandb_logger, _optimizer, coverage_score
 from model.pipeline import Pipeline
 from model.graph_gmvae import DeepMetaBinModel
+import shutil
 
 def main():
     ######Hyperparameters######
@@ -91,6 +94,7 @@ def main():
                              zarr_dataset_path=args.zarr_dataset_path,
                              contignames_path=args.contignames_path,
                              log_path=args.output,
+                            #  use_gmm=True
                              k=args.KNN,
                              result_path=osp.join(args.output, 'results'),
                              contig_path=args.contig_path
@@ -105,7 +109,10 @@ def main():
     patience_counter = 0
     best_coverage = 0
     patience = 5
+    epoch_c = 0
     gmmcsv_path = os.path.join(args.output, 'results/gmm.csv')
+    gmmcsv_best_path = os.path.join(args.output, 'results/gmm_best.csv')
+    metrics = []
     for epoch in range(args.num_epoch):
         logging.info(f"Epoch ({epoch}/{args.num_epoch})")
         model.train()
@@ -119,27 +126,41 @@ def main():
         scheduler.step()
 
         model.eval()
-        with torch.no_grad():
-            for batch in val_loader:
-                model.validation_step(batch)
-        
-        coverage = coverage_score(gmmcsv_path)
+        if epoch_c >= 100 and epoch_c % 5 == 0:
+            with torch.no_grad():
+                for batch in val_loader:
+                    model.validation_step(batch)
+                    metrics.append(cov(gmmcsv_path))
+            
+            coverage = coverage_score(gmmcsv_path)
 
-        if coverage > best_coverage:
-            best_coverage = coverage
-            patience_counter = 0
-            torch.save(model.state_dict(), 'best_model.pth')
-        else:
-            patience_counter += 1
-            if patience_counter >= patience:
-                model.load_state_dict(torch.load('best_model.pth'))
-                model.eval()
-                with torch.no_grad():
-                    for batch in val_loader:
-                        model.validation_step(batch)
-                logging.info('Early stopping triggered, best model restored')
-                break
+            if coverage >= best_coverage:
+                best_coverage = coverage
+                patience_counter = 0
+                torch.save(model.state_dict(), 'best_model.pth')
+                shutil.copy(gmmcsv_path, gmmcsv_best_path)
+            else:
+                patience_counter += 1
+                if patience_counter >= patience:
+                    model.load_state_dict(torch.load('best_model.pth'))
+                    
+                    model.eval()
+                    with torch.no_grad():
+                        for batch in val_loader:
+                            model.validation_step(batch)
+                    
+                    logging.info('Early stopping triggered, best model restored')
+                    shutil.copy(gmmcsv_best_path, gmmcsv_path)
+                    model.rec_best_gmm()
 
+                    metrics.append(cov(gmmcsv_path))
+                    # Write metrics into a CSV file
+                    metrics_path = os.path.join(args.output, 'metrics.csv')
+                    metrics_array = np.array(metrics)
+                    np.savetxt(metrics_path, metrics_array, delimiter=',', fmt='%1.8f')
+
+                    break
+        epoch_c += 1
         logging.info("Wrote contigs into bins")
         logging.info('Finish training!')
     

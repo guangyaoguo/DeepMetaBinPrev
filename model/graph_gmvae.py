@@ -8,6 +8,7 @@ from model.gmvae import GMVAENet
 from model.losses import LossFunctions
 import zarr
 import os
+
 from utils.utils import (
     summary_bin_list_from_batch, 
     evaluate,
@@ -35,7 +36,7 @@ class DeepMetaBinModel(nn.Module):
         k=5,
         result_path="",
         contig_path="",
-        # use_gmm=True,
+        use_gmm=False,
         *args,
         **kwargs,
     ):
@@ -64,8 +65,8 @@ class DeepMetaBinModel(nn.Module):
         super().__init__()
         if num_classes == None:
             root = zarr.open(zarr_dataset_path, mode="r")
-            self.num_classes = 10
-            # self.num_classes = root.attrs["num_bins"]
+            # self.num_classes = 10
+            self.num_classes = root.attrs["num_bins"]
             print('~~~~~~~~~~~~~~~~~~~')
             print(self.num_classes)
             print('~~~~~~~~~~~~~~~~~~~')
@@ -88,8 +89,6 @@ class DeepMetaBinModel(nn.Module):
         os.makedirs(self.result_path, exist_ok=True)
         self.contignames_path = contignames_path
         self.contig_path = contig_path
-        # self.use_gmm = use_gmm
-        # self.gmm = GaussianMixture(n_components=num_classes, random_state=2021) if self.use_gmm else None
         self.count = 0
         self.epoch_list = []
 
@@ -192,7 +191,8 @@ class DeepMetaBinModel(nn.Module):
         fit_gmm(latent_feature, contignames, os.path.join(self.result_path, 'gmm.csv'), self.num_classes)
         get_binning_result(self.contig_path, os.path.join(self.result_path, 'gmm.csv'), os.path.join(self.result_path, 'pre_bins'))
 
-
+    def rec_best_gmm(self):
+        get_binning_result(self.contig_path, os.path.join(self.result_path, 'gmm.csv'), os.path.join(self.result_path, 'pre_bins'))
     # def configure_optimizers(self):
     #     return Adam(self.parameters(), lr=self.lr)
  

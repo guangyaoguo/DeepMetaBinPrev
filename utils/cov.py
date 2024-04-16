@@ -4,8 +4,11 @@ def coverage_score(path):
     df = pd.read_csv(path, sep='\t', header=None, names=['contig', 'cluster'])
 
     df['length'] = df['contig'].str.extract(r'length_(\d+)_').astype(int)
-    df['taxid'] = df['contig'].str.extract(r'kraken:taxid\|(\d+)')
-    df = df[df['taxid'] != '0']
+    df['taxid'] = df['contig'].str.extract(r'taxid\|(.*)')
+    df = df[df['taxid'] != '000000000']
+
+    # df['taxid'] = df['contig'].str.extract(r'kraken:taxid\|(\d+)')
+    # df = df[df['taxid'] != '0']
 
     df2 = df.copy()
     max_length_per_taxid_cluster = df.groupby(['cluster', 'taxid'])['length'].sum().reset_index()
@@ -28,7 +31,7 @@ def coverage_score(path):
 
 
 
-    return 2*recall*precision/(recall+precision)
+    return [precision, recall, 2*recall*precision/(recall+precision)]
 
 
 if __name__ == '__main__':
@@ -40,4 +43,6 @@ if __name__ == '__main__':
 
     path = sys.argv[1]
     result = coverage_score(path)
+
+    print('Precision, Recall, F1 Score:')
     print(result)
