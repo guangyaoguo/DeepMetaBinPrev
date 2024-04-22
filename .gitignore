@@ -14,7 +14,7 @@ deepmetabin_out_cami1_m_f1/
 deepmetabin_out_cam1_m_true_filt/
 deepmetabin_out_cami1_m_true_full/
 deepmetabin_out_cami1_m_true_fixed/
-
+checkm2_pre/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

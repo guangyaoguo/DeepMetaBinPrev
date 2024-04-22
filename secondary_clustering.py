@@ -17,7 +17,6 @@ from collections import defaultdict
 import argparse
 from utils.utils import get_binning_result
 
-
 def fasta_iter(fname, full_header=False):
     '''Iterate over a (possibly gzipped) FASTA file
     Parameters

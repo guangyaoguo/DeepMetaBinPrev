@@ -13,7 +13,7 @@
 
 ## Description
 
-This repo contains implementations of deep learning method of metagenomic binning so-called DeepMetaBin,
+This repo contains first implementations of deep learning method of metagenomic binning so-called DeepMetaBin,
 
 The code repository is organized into the following components:
 | Component | Description |

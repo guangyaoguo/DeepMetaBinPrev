@@ -42,6 +42,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     path = sys.argv[1]
+    
     result = coverage_score(path)
 
     print('Precision, Recall, F1 Score:')

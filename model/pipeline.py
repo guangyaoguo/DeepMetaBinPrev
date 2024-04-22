@@ -111,12 +111,13 @@ class Pipeline(Dataset):
         contig_id_list = root.attrs["contig_id_list"]
         tnf_list = root.attrs["tnf_list"]
         rpkm_list = root.attrs["rpkm_list"]
+        # species_list = root.attrs["species_list"]
         # label_list = root.attrs["label_list"]
 
         data_list = []
         rkpm_array = np.array(rpkm_list, dtype="float32")
         tnf_array = np.array(tnf_list, dtype="float32")
-
+        # species_array = np.array(species_list, dtype="float32")
 
         if self.multisample:
             zscore(rkpm_array, axis=0, inplace=True)
@@ -126,12 +127,17 @@ class Pipeline(Dataset):
             item = {}
             idx = contig_id_list.index(i)
             feature = all_feature[idx]
+            # species = species_array[idx]
             # labels = np.array([label_list[idx]], dtype="float32")
             contig_id = np.array([i], dtype="float32")
             item["feature"] = feature
+            # item["species"] = species
             # item["labels"] = labels
             item["id"] = contig_id
             data_list.append(item)
+        
+
+
         return data_list, contig_id_list
 
     def create_knn_graph(self, data_list, k, threshold=10):
