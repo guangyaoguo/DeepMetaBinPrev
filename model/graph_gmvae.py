@@ -130,10 +130,10 @@ class DeepMetaBinModel(nn.Module):
         reconstruction_loss = loss_dict["reconstruction"]
         gaussian_loss = loss_dict["gaussian"]
         categorical_loss = loss_dict["categorical"]
-        # self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=False)
-        # self.log("train/reconstruction_loss", reconstruction_loss, on_step=False, on_epoch=True, prog_bar=False)
-        # self.log("train/gaussian_loss", gaussian_loss, on_step=False, on_epoch=True, prog_bar=False)
-        # self.log("train/categorical_loss", categorical_loss, on_step=False, on_epoch=True, prog_bar=False)
+        self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=False)
+        self.log("train/reconstruction_loss", reconstruction_loss, on_step=False, on_epoch=True, prog_bar=False)
+        self.log("train/gaussian_loss", gaussian_loss, on_step=False, on_epoch=True, prog_bar=False)
+        self.log("train/categorical_loss", categorical_loss, on_step=False, on_epoch=True, prog_bar=False)
         
         loss_rec_neigh = 0
         for i in range(self.k):

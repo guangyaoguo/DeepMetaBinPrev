@@ -16,6 +16,9 @@ import glob
 from collections import defaultdict
 import argparse
 from utils.utils import get_binning_result
+from utils.leiden import leiden_clustering_scanpy, cluster
+import pandas as pd
+import anndata as ad
 
 def fasta_iter(fname, full_header=False):
     '''Iterate over a (possibly gzipped) FASTA file
@@ -400,28 +403,42 @@ if __name__ == "__main__":
     must_link = read_must_link(os.path.join(args.primary_out, 'must_link.csv'), contignames)
     issue_bins = get_issue_bins(os.path.join(args.primary_out, 'results', 'pre_bins', 'checkm.tsv'))
     # issue_bins = [0, 11, 17, 23, 25, 26, 29, 39, 6, 9, 31,18, 30, 12]
-    post_bin_list = []
+    # post_bin_list = []
 
-    for bin_path in fasta_bin:
-        cluster_num = int(os.path.basename(bin_path).replace('cluster.','').replace('.fasta', ''))
-        if cluster_num in issue_bins:
-            n_clusters, cannot_link = gen_cannot_link(bin_path, args.binned_length, 20, bin_num_mode=args.mode, output=args.output_path)
-            cl_indices, ml_indices, bin_data, target_contig = gen_cannot_link_indices(latent, cannot_link, must_link, contignames, bin_dict[cluster_num])
-            ml_indices, cl_indices = purify_must_link(ml_indices, cl_indices)
-            if n_clusters <= 1:
-                n_clusters = 2
-            labels = bh_kmeans(bin_data, n_clusters, ml=ml_indices, cl=cl_indices, p=3, random_state=2021, time_limit=600)
-            post_bin = defaultdict(list)
-            for l, contigname in zip(labels, target_contig):
-                post_bin[str(cluster_num) + '_' + str(l)].append(str(contigname))
-            post_bin_list.append(dict(post_bin))
+
+    # use scanpy.leiden
+    # anndata = ad.AnnData(X=latent)
+    # anndata.obs_names = contignames
+    # leiden_clustered= leiden_clustering_scanpy(anndata)
+    # labels = leiden_clustered.obs['leiden'].values
+    
+    # use leidenalg
+    labels = cluster(latent, threads = 240, contignames = contignames, max_edges=100)
+
+    # for bin_path in fasta_bin:
+    #     cluster_num = int(os.path.basename(bin_path).replace('cluster.','').replace('.fasta', ''))
+    #     if cluster_num in issue_bins:
+    #         n_clusters, cannot_link = gen_cannot_link(bin_path, args.binned_length, 20, bin_num_mode=args.mode, output=args.output_path)
+    #         cl_indices, ml_indices, bin_data, target_contig = gen_cannot_link_indices(latent, cannot_link, must_link, contignames, bin_dict[cluster_num])
+    #         ml_indices, cl_indices = purify_must_link(ml_indices, cl_indices)
+    #         if n_clusters <= 1:
+    #             n_clusters = 2
+    #         labels = bh_kmeans(bin_data, n_clusters, ml=ml_indices, cl=cl_indices, p=3, random_state=2021, time_limit=600)
+    #         post_bin = defaultdict(list)
+    #         for l, contigname in zip(labels, target_contig):
+    #             post_bin[str(cluster_num) + '_' + str(l)].append(str(contigname))
+    #         post_bin_list.append(dict(post_bin))
   
 
-    bin_dict = merge_bins(bin_dict, issue_bins, post_bin_list)
+    # bin_dict = merge_bins(bin_dict, issue_bins, post_bin_list)
+    # with open(os.path.join(args.output_path, f'post_cluster.csv'), 'w') as f:
+    #     for key, val in bin_dict.items():
+    #         for v in val:
+    #             f.write(f'{str(v)}\t{str(key)}\n')
+
     with open(os.path.join(args.output_path, f'post_cluster.csv'), 'w') as f:
-        for key, val in bin_dict.items():
-            for v in val:
-                f.write(f'{str(v)}\t{str(key)}\n')
+        for key, val in zip(labels, contignames):
+            f.write(f'{str(val)}\t{str(key)}\n')
 
     get_binning_result(args.contig_path, os.path.join(args.output_path, f'post_cluster.csv'), os.path.join(args.output_path, 'secondary_bins'))
     
