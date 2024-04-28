@@ -18,6 +18,12 @@ else
 	cd $output
 fi
 
+source ~/.bashrc; conda deactivate; conda activate deepmetabin
+python /datahome/datasets/ericteam/csgyguo/DeepMetaBin/get_multiviews.py --n_views 6 --contig_file $contigs --out_augdata_path /datahome/datasets/ericteam/csgyguo/DeepMetaBin/deepmetabin_out --contig_len 1000
+
+# tips to use get_multiviews.py
+# python /datahome/datasets/ericteam/csgyguo/DeepMetaBin/get_multiviews.py --n_views 6 --contig_file /datahome/datasets/ericteam/zmzhang/Benchmarking/reads/CAMI/medium/metaspades_S002_done/contigs.fasta --out_augdata_path /datahome/datasets/ericteam/csgyguo/DeepMetaBin/deepmetabin_out --contig_len 1000
+
 cp $contigs contigs.fasta
 
 if [ ! -f "contigs.map.sorted.bam" ]
@@ -26,7 +32,6 @@ then
     bwa mem contigs.fasta $reads -t 100 | samtools sort -@ 40 -n -o contigs.map.sorted.bam
 fi
 
-source ~/.bashrc; conda deactivate; conda activate deepmetabin
 python /datahome/datasets/ericteam/csgyguo/DeepMetaBin/preprocessing.py --outdir ./ --fasta /datahome/datasets/ericteam/csgyguo/DeepMetaBin/deepmetabin_out/contigs.fasta --bamfiles /datahome/datasets/ericteam/csgyguo/DeepMetaBin/deepmetabin_out/contigs.map.sorted.bam -m 1000
 #python /datahome/datasets/ericteam/zmzhang/csmxrao/DeepMetaBin/mingxing/deepmetabin/run.py datamodule.zarr_dataset_path=data.zarr datamodule.output=deepmetabin_out model.contignames_path=contignames.npz model.contig_path=contigs.fasta
 python /datahome/datasets/ericteam/csgyguo/DeepMetaBin/train.py -data data.zarr --contignames_path contignames.npz --contig_path /datahome/datasets/ericteam/csgyguo/DeepMetaBin/deepmetabin_out/contigs.fasta --output deepmetabin_out

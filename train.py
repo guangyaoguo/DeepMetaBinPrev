@@ -106,13 +106,6 @@ def main():
      ######Training the model######
     logging.info("Start Training...")
 
-    patience_counter = 0
-    best_coverage = 0
-    patience = 5
-    epoch_c = 0
-    gmmcsv_path = os.path.join(args.output, 'results/gmm.csv')
-    gmmcsv_best_path = os.path.join(args.output, 'results/gmm_best.csv')
-    metrics = []
     for epoch in range(args.num_epoch):
         logging.info(f"Epoch ({epoch}/{args.num_epoch})")
         model.train()
@@ -125,44 +118,70 @@ def main():
         logging.info(f'loss: {loss}')
         scheduler.step()
 
-        model.eval()
-        if epoch_c >= 100 and epoch_c % 5 == 0:
-            with torch.no_grad():
-                for batch in val_loader:
-                    model.validation_step(batch)
-                    metrics.append(cov(gmmcsv_path))
+        
+    model.eval()
+    model.validation_step()
+    logging.info("Wrote contigs into bins")
+    logging.info('Finish training!')
+
+    # Training include early stopping(deactivated)
+    # patience_counter = 0
+    # best_coverage = 0
+    # patience = 5
+    # epoch_c = 0
+    # gmmcsv_path = os.path.join(args.output, 'results/gmm.csv')
+    # gmmcsv_best_path = os.path.join(args.output, 'results/gmm_best.csv')
+    # metrics = []
+    # for epoch in range(args.num_epoch):
+    #     logging.info(f"Epoch ({epoch}/{args.num_epoch})")
+    #     model.train()
+    #     for i, batch in enumerate(tqdm(dataloader, ncols=80, desc='Training')):
+    #         optimizer.zero_grad()
+    #         loss = model.training_step(batch, i)['loss']
+    #         logging.logging_with_step('loss', loss, epoch * len(dataloader) + i)
+    #         loss.backward()
+    #         optimizer.step()
+    #     logging.info(f'loss: {loss}')
+    #     scheduler.step()
+
+    #     model.eval()
+    #     if epoch_c >= 100 and epoch_c % 5 == 0:
+    #         with torch.no_grad():
+    #             for batch in val_loader:
+    #                 model.validation_step(batch)
+    #                 metrics.append(cov(gmmcsv_path))
             
-            coverage = coverage_score(gmmcsv_path)
+    #         coverage = coverage_score(gmmcsv_path)
 
-            if coverage >= best_coverage:
-                best_coverage = coverage
-                patience_counter = 0
-                torch.save(model.state_dict(), 'best_model.pth')
-                shutil.copy(gmmcsv_path, gmmcsv_best_path)
-            else:
-                patience_counter += 1
-                if patience_counter >= patience:
-                    model.load_state_dict(torch.load('best_model.pth'))
+    #         if coverage >= best_coverage:
+    #             best_coverage = coverage
+    #             patience_counter = 0
+    #             torch.save(model.state_dict(), 'best_model.pth')
+    #             shutil.copy(gmmcsv_path, gmmcsv_best_path)
+    #         else:
+    #             patience_counter += 1
+    #             if patience_counter >= patience:
+    #                 model.load_state_dict(torch.load('best_model.pth'))
                     
-                    model.eval()
-                    with torch.no_grad():
-                        for batch in val_loader:
-                            model.validation_step(batch)
+    #                 model.eval()
+    #                 with torch.no_grad():
+    #                     for batch in val_loader:
+    #                         model.validation_step(batch)
                     
-                    logging.info('Early stopping triggered, best model restored')
-                    shutil.copy(gmmcsv_best_path, gmmcsv_path)
-                    model.rec_best_gmm()
+    #                 logging.info('Early stopping triggered, best model restored')
+    #                 shutil.copy(gmmcsv_best_path, gmmcsv_path)
+    #                 model.rec_best_gmm()
 
-                    metrics.append(cov(gmmcsv_path))
-                    # Write metrics into a CSV file
-                    metrics_path = os.path.join(args.output, 'metrics.csv')
-                    metrics_array = np.array(metrics)
-                    np.savetxt(metrics_path, metrics_array, delimiter=',', fmt='%1.8f')
+    #                 metrics.append(cov(gmmcsv_path))
+    #                 # Write metrics into a CSV file
+    #                 metrics_path = os.path.join(args.output, 'metrics.csv')
+    #                 metrics_array = np.array(metrics)
+    #                 np.savetxt(metrics_path, metrics_array, delimiter=',', fmt='%1.8f')
 
-                    break
-        epoch_c += 1
-        logging.info("Wrote contigs into bins")
-        logging.info('Finish training!')
+    #                 break
+    #     epoch_c += 1
+        # logging.info("Wrote contigs into bins")
+        # logging.info('Finish training!')
     
 
     
