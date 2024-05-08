@@ -30,7 +30,8 @@ def main():
     parser.add_argument("--weight_decay", default=5e-4, type=float, help="Weight decay for optimizer")
     parser.add_argument("--w_cat", default=0.000156, type=float, help="Weight for Categorical loss")
     parser.add_argument("--w_gauss", default=0.000156, type=float, help="Weight for Gaussian loss")
-    parser.add_argument("--w_rec", default=1.0, type=float, help="Weight for Reconstruction loss")
+    parser.add_argument("--w_rec", default=0.5, type=float, help="Weight for Reconstruction loss")
+    parser.add_argument("--w_cl", default=0.5, type=float, help="Weight for Reconstruction loss")
     parser.add_argument("--input_size", default=104, type=int, help="Input feature size")
     parser.add_argument("--gaussian_size", default=32, type=int, help="Embed size")
     parser.add_argument("--sigma", default=1.0, type=float, help="The sigma for Gassian kernal")
@@ -42,7 +43,7 @@ def main():
     parser.add_argument("--contignames_path", type=str, default='./sample_data/contignames.npz', help="Contigname path")
     parser.add_argument("--contig_path", type=str, default='./sample_data/contigs.fasta', help="Contig fasta path")
     parser.add_argument("--exp_name", "-exp", type=str, default='time', help="Name for this experiment")
-    parser.add_argument("--batch_size", "-b", type=int, default=400, help="Batch size for NN")
+    parser.add_argument("--batch_size", "-b", type=int, default=420, help="Batch size for NN")
     parser.add_argument("--num_workers", type=int, default=50, help="Number of workers")
     parser.add_argument("--output", type=str, default="./deepmetabin_out", help="Output for deepmetabin")
     parser.add_argument("--num_epoch", "-e", type=int, default=500, help="Epoch for NN")
@@ -91,6 +92,7 @@ def main():
                              w_cat=args.w_cat,
                              w_gauss=args.w_gauss,
                              w_rec=args.w_rec,
+                             w_cl=args.w_cl,
                              zarr_dataset_path=args.zarr_dataset_path,
                              contignames_path=args.contignames_path,
                              log_path=args.output,

@@ -24,7 +24,7 @@ python /datahome/datasets/ericteam/csgyguo/DeepMetaBin/get_multiviews.py --n_vie
 # tips to use get_multiviews.py
 # python /datahome/datasets/ericteam/csgyguo/DeepMetaBin/get_multiviews.py --n_views 6 --contig_file /datahome/datasets/ericteam/zmzhang/Benchmarking/reads/CAMI/medium/metaspades_S002_done/contigs.fasta --out_augdata_path /datahome/datasets/ericteam/csgyguo/DeepMetaBin/deepmetabin_out --contig_len 1000
 
-cp $contigs contigs.fasta
+cp /datahome/datasets/ericteam/csgyguo/DeepMetaBin/deepmetabin_out/aug0/sequences_combined.fasta contigs.fasta
 
 if [ ! -f "contigs.map.sorted.bam" ]
 then

@@ -413,7 +413,7 @@ if __name__ == "__main__":
     # labels = leiden_clustered.obs['leiden'].values
     
     # use leidenalg
-    labels = cluster(latent, threads = 240, contignames = contignames, max_edges=100)
+    labels = cluster(latent, threads = 120, contignames = contignames, max_edges=100)
 
     # for bin_path in fasta_bin:
     #     cluster_num = int(os.path.basename(bin_path).replace('cluster.','').replace('.fasta', ''))

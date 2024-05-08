@@ -125,3 +125,36 @@ class LossFunctions:
       loss = (torch.mul(adj_matrix, torch.log(reconstruct_graph)) + \
         torch.mul((1 - adj_matrix), torch.log(1 - reconstruct_graph))).sum()
       return loss
+
+
+    def contrastive_loss(features, temperature=0.5, group_size=6):
+        """
+        Compute contrastive loss with multiple positives per anchor.
+        Assumes that features are already normalized.
+        """
+        # Calculate similarity matrix
+        similarity_matrix = torch.matmul(features, features.T)
+
+        # Get the batch size and fill the mask
+        batch_size = features.shape[0]
+        full_mask = torch.zeros((batch_size, batch_size), dtype=torch.bool, device=features.device)
+        
+        # Fill the mask with group_size positives per anchor
+        for i in range(0, batch_size, group_size):
+            full_mask[i:i+group_size, i:i+group_size] = 1
+
+        # Set the diagonal to 0
+        diag_mask = torch.eye(batch_size, dtype=torch.bool,
+                              
+                               device=features.device)
+        full_mask[diag_mask] = 0
+
+        # Calculate the loss
+        exp_sim = torch.exp(similarity_matrix / temperature)
+        sum_exp_sim = torch.sum(exp_sim, dim=1, keepdim=True)
+
+        # Sum the positives
+        positive_sum = torch.sum(exp_sim * full_mask, dim=1, keepdim=True)
+        loss = -torch.log(positive_sum / sum_exp_sim).mean()
+
+        return loss

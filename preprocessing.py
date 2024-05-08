@@ -2,9 +2,19 @@
 
 # More imports below, but the user's choice of processors must be parsed before
 # numpy can be imported.
-import numpy as np
 import sys
 import os
+
+DEFAULT_PROCESSES = min(os.cpu_count(), 64)
+
+# These MUST be set before importing numpy
+# I know this is a shitty hack, see https://github.com/numpy/numpy/issues/11826
+os.environ["MKL_NUM_THREADS"] = str(DEFAULT_PROCESSES)
+os.environ["NUMEXPR_NUM_THREADS"] = str(DEFAULT_PROCESSES)
+os.environ["OMP_NUM_THREADS"] = str(DEFAULT_PROCESSES)
+os.environ['OPENBLAS_NUM_THREADS'] = str(DEFAULT_PROCESSES)
+
+import numpy as np
 import argparse
 import torch
 import datetime
@@ -29,16 +39,6 @@ from utils import (
 from utils.calculate_bin_num import gen_cannot_link as cal_num_bins
 
 # link 145 filter_threshold line 286 inputos.add_argument('-m', dest='minlength', metavar='', type=int, default=2500,
-
-
-
-DEFAULT_PROCESSES = min(os.cpu_count(), 8)
-
-# These MUST be set before importing numpy
-# I know this is a shitty hack, see https://github.com/numpy/numpy/issues/11826
-os.environ["MKL_NUM_THREADS"] = str(DEFAULT_PROCESSES)
-os.environ["NUMEXPR_NUM_THREADS"] = str(DEFAULT_PROCESSES)
-os.environ["OMP_NUM_THREADS"] = str(DEFAULT_PROCESSES)
 
 # Append vamb to sys.path to allow vamb import even if vamb was not installed
 # using pip
@@ -184,7 +184,7 @@ def create_contigs_zarr_dataset(
     # long_contig_id_list = []
     for i in trange(len(contigname_attrs), desc="Preprocessing dataset......"):
         props = contigname_attrs[i].split("_")
-        contig_id = int(props[1])
+        contig_id = int(props[-1])
         contig_length = int(props[3])
         # if contig_length >= long_contig_threshold:
         #     long_contig_id_list.append(i)

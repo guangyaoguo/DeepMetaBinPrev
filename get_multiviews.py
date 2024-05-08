@@ -1,3 +1,4 @@
+# modified from https://github.com/ziyewang/COMEBin/blob/master/COMEBin/data_aug/generate_augfasta_and_saveindex.py
 from Bio import SeqIO
 import mimetypes
 import os
@@ -78,7 +79,7 @@ def gen_augfasta(seqs: Dict[str, str], augprefix: str, out_file: str,
                 end = start + sim_len - 1
                 # gen_seqs_dict[genome_name+"_sim_"+str(sim_count)] =seqs[seqid][start:end+1]
                 sequence = str(seqs[seqid][start:end + 1])
-                seqid_name = ">" + seqid + "_aug_" + str(augprefix)
+                seqid_name = ">" + seqid + "_" + str(augprefix)
                 f.write(seqid_name + "\n")
                 f.write(sequence + "\n")
                 aug_seq_info.append((seqid, start, end, sim_len))
@@ -92,13 +93,30 @@ def gen_augfasta(seqs: Dict[str, str], augprefix: str, out_file: str,
                 aug_seq_info[i][0] + '\t' + str(aug_seq_info[i][1]) + '\t' + str(aug_seq_info[i][2]) + '\t' + str(
                     aug_seq_info[i][3]) + '\n')
 
+# def gen_combined_fasta(input_list, output_file):
+#     with open(output_file, 'w') as out_f:
+#         for file_name in input_list:
+#             with open(file_name, 'r') as in_f:
+#                 for record in SeqIO.parse(in_f, 'fasta'):
+#                     out_f.write('>' + record.id + '\n')
+#                     out_f.write(str(record.seq) + '\n')
+
+# seqs followed by views
 def gen_combined_fasta(input_list, output_file):
     with open(output_file, 'w') as out_f:
+        list_seqs = []
         for file_name in input_list:
             with open(file_name, 'r') as in_f:
-                for record in SeqIO.parse(in_f, 'fasta'):
-                    out_f.write('>' + record.id + '\n')
-                    out_f.write(str(record.seq) + '\n')
+                list_seqs.append(list(SeqIO.parse(in_f, 'fasta')))
+
+        zipped_seqs = zip(*list_seqs)
+        
+        i = 0
+        for records in zipped_seqs:
+            for record in records:
+                out_f.write('>' + record.id + '_newid_' + str(i) + '\n')
+                out_f.write(str(record.seq) + '\n')
+                i += 1
 
 
 def run_gen_augfasta(n_views, contig_file, out_augdata_path, contig_len):
@@ -116,7 +134,18 @@ def run_gen_augfasta(n_views, contig_file, out_augdata_path, contig_len):
         shutil.rmtree(outdir)  # Remove existing directory and its contents
     os.makedirs(outdir)
     out_file = outdir + '/sequences_aug0.fasta'
-    shutil.copyfile(fasta_file, out_file)
+    seqs = get_inputsequences(fasta_file)
+
+    seqkeys = []
+    for seqid in seqs.keys():
+        if len(seqs[seqid]) >= contig_len + 1:
+            seqkeys.append(seqid)
+    with open(out_file, 'w') as f:
+        for seqid in seqkeys:
+            sequence = str(seqs[seqid])
+            seqid_name = ">" + seqid + "_" + "aug_0"
+            f.write(seqid_name + "\n")
+            f.write(sequence + "\n")
 
     out_list.append(out_file)
     for i in range(num_aug):
@@ -129,7 +158,7 @@ def run_gen_augfasta(n_views, contig_file, out_augdata_path, contig_len):
         seqs = get_inputsequences(fasta_file)
 
         out_file = outdir + '/sequences_aug' + str(i + 1) + '.fasta'
-        gen_augfasta(seqs, 'aug' + str(i + 1), out_file, p=p, contig_len=contig_len)
+        gen_augfasta(seqs, 'aug_' + str(i + 1), out_file, p=p, contig_len=contig_len)
         out_list.append(out_file)
 
     combined_file = out_path + '/aug0' + '/sequences_combined.fasta'
