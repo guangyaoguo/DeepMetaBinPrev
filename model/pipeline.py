@@ -45,7 +45,7 @@ class Pipeline(Dataset):
         k: int = 5,
         sigma: int =1,
         multisample=False,
-        use_neighbor_feature=True,
+        use_neighbor_feature=False,
         must_link_path: str = "",
         *args,
         **kwargs,
@@ -57,39 +57,39 @@ class Pipeline(Dataset):
         self.must_link_path = must_link_path
         self.multisample = multisample
         self.Gaussian = Gaussian(sigma=sigma)
-        self.dbscan = DBSCAN(
-            eps=1.65,
-            metric="precomputed",
-            min_samples=2,
-            n_jobs=50
-        )
+        # self.dbscan = DBSCAN(
+        #     eps=1.65,
+        #     metric="precomputed",
+        #     min_samples=2,
+        #     n_jobs=50
+        # )
         self.data = []
 
         self.data = self.load_dataset(zarr_dataset_path)
 
     def load_dataset(self, zarr_dataset_path):
         data_list, contig_id_list = self._load_graph_attrs(zarr_dataset_path)
-        if self.use_neighbor_feature:
-            data_list = self.create_knn_graph(
-                data_list=data_list,
-                k=self.k,
-            )
-        pre_compute_matrix = create_matrix(
-            data_list=data_list,
-            contig_list=contig_id_list,
-        )
+        # if self.use_neighbor_feature:
+        #     data_list = self.create_knn_graph(
+        #         data_list=data_list,
+        #         k=self.k,
+        #     )
+        # pre_compute_matrix = create_matrix(
+        #     data_list=data_list,
+        #     contig_list=contig_id_list,
+        # )
         
         # Get DBSCAN clustering result.
-        cluster_result = self.dbscan.fit(pre_compute_matrix)
-        labels_array = cluster_result.labels_
-        print('finish dbscan')
-        labels_array = label_propagation(labels_array, create_matrix(data_list=data_list, contig_list=contig_id_list, labels_array=labels_array, option='sparse'))
-        print('finish lbp')
-        data_list, labels_array = remove_ambiguous_label(data_list, labels_array, contig_id_list)
-        print('finish remove_ambiguous_label')
-        self.generate_must_link(data_list, output=self.must_link_path)
-        data_list = self.neighbor_graph_to_training_set(data_list, contig_id_list, self.k)
-        print('finish fiter_knn_graph')
+        # cluster_result = self.dbscan.fit(pre_compute_matrix)
+        # labels_array = cluster_result.labels_
+        # print('finish dbscan')
+        # labels_array = label_propagation(labels_array, create_matrix(data_list=data_list, contig_list=contig_id_list, labels_array=labels_array, option='sparse'))
+        # print('finish lbp')
+        # data_list, labels_array = remove_ambiguous_label(data_list, labels_array, contig_id_list)
+        # print('finish remove_ambiguous_label')
+        # self.generate_must_link(data_list, output=self.must_link_path)
+        # data_list = self.neighbor_graph_to_training_set(data_list, contig_id_list, self.k)
+        # print('finish fiter_knn_graph')
         return data_list
 
     def generate_must_link(self, data_list, output=''):

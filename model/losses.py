@@ -133,8 +133,6 @@ class LossFunctions:
         Assumes that features are already normalized.
         """
         # Calculate similarity matrix
-        print(features)
-        print(type(features))
 
         similarity_matrix = torch.matmul(features, features.T)
 

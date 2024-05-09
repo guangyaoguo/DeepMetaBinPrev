@@ -28,9 +28,9 @@ def main():
 
     parser.add_argument("--learning_rate", "-lr", default=1e-4, type=float, help="Learning rate")
     parser.add_argument("--weight_decay", default=5e-4, type=float, help="Weight decay for optimizer")
-    parser.add_argument("--w_cat", default=0.000156, type=float, help="Weight for Categorical loss")
-    parser.add_argument("--w_gauss", default=0.000156, type=float, help="Weight for Gaussian loss")
-    parser.add_argument("--w_rec", default=0.5, type=float, help="Weight for Reconstruction loss")
+    parser.add_argument("--w_cat", default=1, type=float, help="Weight for Categorical loss")
+    parser.add_argument("--w_gauss", default=1, type=float, help="Weight for Gaussian loss")
+    parser.add_argument("--w_rec", default=1, type=float, help="Weight for Reconstruction loss")
     parser.add_argument("--w_cl", default=0.5, type=float, help="Weight for Reconstruction loss")
     parser.add_argument("--input_size", default=104, type=int, help="Input feature size")
     parser.add_argument("--gaussian_size", default=32, type=int, help="Embed size")

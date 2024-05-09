@@ -67,9 +67,9 @@ class DeepMetaBinModel(nn.Module):
         if num_classes == None:
             root = zarr.open(zarr_dataset_path, mode="r")
             # self.num_classes = 10
-            self.num_classes = root.attrs["num_bins"]
+            self.num_classes = root.attrs["num_bins"]//2
 
-        self.num_classes = 80
+        # self.num_classes = 50
         
         self.network = GMVAENet(
             x_dim = input_size,
@@ -103,9 +103,10 @@ class DeepMetaBinModel(nn.Module):
         loss_rec = self.losses.reconstruction_loss(data, data_recon)
         loss_gauss = self.losses.gaussian_loss(z, mu, var, y_mu, y_var)
         loss_cat = -self.losses.entropy(logits, prob_cat) - np.log(0.1)
-        loss_cl = self.losses.contrastive_loss(latent, prob_cat)
+        # loss_cl = self.losses.contrastive_loss(latent)
+        loss_cl = 0
 
-        loss_total = self.w_rec * loss_rec + self.w_gauss * loss_gauss + self.w_cat * loss_cat + self.w_cl + loss_cl
+        loss_total = self.w_rec * loss_rec + self.w_gauss * loss_gauss + self.w_cat * loss_cat
         # loss_total = self.w_rec * loss_rec + self.w_gauss * loss_gauss + self.w_cat * loss_cat
 
         predicted_clusters = prob_cat.argmax(-1)
@@ -126,9 +127,9 @@ class DeepMetaBinModel(nn.Module):
         
     def training_step(self, batch, batch_idx):
         attributes = batch["feature"]
-        neighbor_attributes = batch["neighbors_feature"].squeeze()
-        neighbors_mask = batch["neighbors_feature_mask"].squeeze()
-        neighbors_weight = batch["neighbors_weight"].squeeze()
+        # neighbor_attributes = batch["neighbors_feature"].squeeze()
+        # neighbors_mask = batch["neighbors_feature_mask"].squeeze()
+        # neighbors_weight = batch["neighbors_weight"].squeeze()
         out_net = self.network(attributes)
         loss_dict = self.unlabeled_loss(attributes, out_net)
 
@@ -137,27 +138,28 @@ class DeepMetaBinModel(nn.Module):
         gaussian_loss = loss_dict["gaussian"]
         categorical_loss = loss_dict["categorical"]
         contrastive_loss = loss_dict["contrastive"]
-        self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=False)
-        self.log("train/reconstruction_loss", reconstruction_loss, on_step=False, on_epoch=True, prog_bar=False)
-        self.log("train/gaussian_loss", gaussian_loss, on_step=False, on_epoch=True, prog_bar=False)
-        self.log("train/categorical_loss", categorical_loss, on_step=False, on_epoch=True, prog_bar=False)
-        self.log("train/contrastive_loss", contrastive_loss, on_step=False, on_epoch=True, prog_bar=False)
+        print("loss: ", loss.item(), "rec_loss: ", reconstruction_loss.item(), "gaussian_loss: ", gaussian_loss.item(), "categorical_loss: ", categorical_loss.item(), "contrastive_loss: ", contrastive_loss)
+        # self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=False)
+        # self.log("train/reconstruction_loss", reconstruction_loss, on_step=False, on_epoch=True, prog_bar=False)
+        # self.log("train/gaussian_loss", gaussian_loss, on_step=False, on_epoch=True, prog_bar=False)
+        # self.log("train/categorical_loss", categorical_loss, on_step=False, on_epoch=True, prog_bar=False)
+        # self.log("train/contrastive_loss", contrastive_loss, on_step=False, on_epoch=True, prog_bar=False)
         
-        loss_rec_neigh = 0
-        for i in range(self.k):
-            nei_feat = neighbor_attributes[:, i]
-            nei_mask = neighbors_mask[:, i]
-            nei_weight = neighbors_weight[:, i]
-            # origin feature based neighbor reconstruction.
-            rec_nei = self.network(nei_feat)["x_rec"]
-            rec_loss = self.losses.reconstruction_loss_by_dim(attributes, rec_nei, nei_mask, nei_weight)
-            loss_rec_neigh += rec_loss
+        # loss_rec_neigh = 0
+        # for i in range(self.k):
+        #     nei_feat = neighbor_attributes[:, i]
+        #     nei_mask = neighbors_mask[:, i]
+        #     nei_weight = neighbors_weight[:, i]
+        #     # origin feature based neighbor reconstruction.
+        #     rec_nei = self.network(nei_feat)["x_rec"]
+        #     rec_loss = self.losses.reconstruction_loss_by_dim(attributes, rec_nei, nei_mask, nei_weight)
+        #     loss_rec_neigh += rec_loss
 
-        loss_rec_neigh = loss_rec_neigh / self.k
-        loss += loss_rec_neigh
+        # loss_rec_neigh = loss_rec_neigh / self.k
+        # loss += loss_rec_neigh
         # self.log("train/rec_neigh_loss", loss_rec_neigh, on_step=False, on_epoch=True, prog_bar=False)
-        self.count += 1
-        return {"loss": loss, "loss_rec_neighor": loss_rec_neigh}
+        # self.count += 1
+        return {"loss": loss}
     
     def test_step(self):
         pass
