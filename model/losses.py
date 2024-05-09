@@ -127,12 +127,15 @@ class LossFunctions:
       return loss
 
 
-    def contrastive_loss(features, temperature=0.5, group_size=6):
+    def contrastive_loss(self, features, temperature=0.5, group_size=6):
         """
         Compute contrastive loss with multiple positives per anchor.
         Assumes that features are already normalized.
         """
         # Calculate similarity matrix
+        print(features)
+        print(type(features))
+
         similarity_matrix = torch.matmul(features, features.T)
 
         # Get the batch size and fill the mask
@@ -144,9 +147,7 @@ class LossFunctions:
             full_mask[i:i+group_size, i:i+group_size] = 1
 
         # Set the diagonal to 0
-        diag_mask = torch.eye(batch_size, dtype=torch.bool,
-                              
-                               device=features.device)
+        diag_mask = torch.eye(batch_size, dtype=torch.bool, device=features.device)
         full_mask[diag_mask] = 0
 
         # Calculate the loss
