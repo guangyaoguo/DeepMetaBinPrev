@@ -104,9 +104,9 @@ class DeepMetaBinModel(nn.Module):
         loss_gauss = self.losses.gaussian_loss(z, mu, var, y_mu, y_var)
         loss_cat = -self.losses.entropy(logits, prob_cat) - np.log(0.1)
         # loss_cl = self.losses.contrastive_loss(latent)
-        loss_cl = 0
+        loss_cl = self.losses.info_nce_loss(latent)
 
-        loss_total = self.w_rec * loss_rec + self.w_gauss * loss_gauss + self.w_cat * loss_cat
+        loss_total = self.w_rec * loss_rec + self.w_gauss * loss_gauss + self.w_cat * loss_cat +self.w_cl * loss_cl
         # loss_total = self.w_rec * loss_rec + self.w_gauss * loss_gauss + self.w_cat * loss_cat
 
         predicted_clusters = prob_cat.argmax(-1)
@@ -138,7 +138,7 @@ class DeepMetaBinModel(nn.Module):
         gaussian_loss = loss_dict["gaussian"]
         categorical_loss = loss_dict["categorical"]
         contrastive_loss = loss_dict["contrastive"]
-        print("loss: ", loss.item(), "rec_loss: ", reconstruction_loss.item(), "gaussian_loss: ", gaussian_loss.item(), "categorical_loss: ", categorical_loss.item(), "contrastive_loss: ", contrastive_loss)
+        print("loss: ", loss.item(), "rec_loss: ", reconstruction_loss.item(), "gaussian_loss: ", gaussian_loss.item(), "categorical_loss: ", categorical_loss.item(), "contrastive_loss: ", contrastive_loss.item())
         # self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=False)
         # self.log("train/reconstruction_loss", reconstruction_loss, on_step=False, on_epoch=True, prog_bar=False)
         # self.log("train/gaussian_loss", gaussian_loss, on_step=False, on_epoch=True, prog_bar=False)
