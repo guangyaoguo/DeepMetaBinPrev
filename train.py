@@ -27,13 +27,13 @@ def main():
     parser.add_argument("--KNN", "-k", default=3, type=int, help="K-nearest neighbor")
 
     parser.add_argument("--learning_rate", "-lr", default=1e-4, type=float, help="Learning rate")
-    parser.add_argument("--weight_decay", default=5e-4, type=float, help="Weight decay for optimizer")
-    parser.add_argument("--w_cat", default=1, type=float, help="Weight for Categorical loss")
+    parser.add_argument("--weight_decay", default=0, type=float, help="Weight decay for optimizer")
+    parser.add_argument("--w_cat", default=0.000156, type=float, help="Weight for Categorical loss")
     parser.add_argument("--w_gauss", default=1, type=float, help="Weight for Gaussian loss")
     parser.add_argument("--w_rec", default=1, type=float, help="Weight for Reconstruction loss")
-    parser.add_argument("--w_cl", default=0.5, type=float, help="Weight for Reconstruction loss")
+    parser.add_argument("--w_cl", default=1, type=float, help="Weight for Contrastive loss")
     parser.add_argument("--input_size", default=104, type=int, help="Input feature size")
-    parser.add_argument("--gaussian_size", default=32, type=int, help="Embed size")
+    parser.add_argument("--gaussian_size", default=2048, type=int, help="Embed size")
     parser.add_argument("--sigma", default=1.0, type=float, help="The sigma for Gassian kernal")
 
     #data
@@ -108,29 +108,50 @@ def main():
      ######Training the model######
     logging.info("Start Training...")
 
+
+    best_loss = float('inf')
+    patience = 5
+    patience_counter = 0
     for epoch in range(args.num_epoch):
         logging.info(f"Epoch ({epoch}/{args.num_epoch})")
         model.train()
         for i, batch in enumerate(tqdm(dataloader, ncols=80, desc='Training')):
             optimizer.zero_grad()
-            loss = model.training_step(batch, i)['loss']
-            logging.logging_with_step('loss', loss, epoch * len(dataloader) + i)
+            lossdict = model.training_step(batch, i)['loss']
+            loss = lossdict["total"]
+            # logging.logging_with_step('loss', loss, epoch * len(dataloader) + i)
             loss.backward()
             optimizer.step()
-        logging.info(f'loss: {loss}')
+            # logging.info(f'loss: {lossdict["total"]}, cat_loss: {lossdict["categorical"]}, gauss_loss: {lossdict["gaussian"]}, rec_loss: {lossdict["reconstruction"]}, cl_loss: {lossdict["contrastive"]}')
+        logging.info(f'loss: {lossdict["total"]}, cat_loss: {lossdict["categorical"]}, gauss_loss: {lossdict["gaussian"]}, rec_loss: {lossdict["reconstruction"]}, cl_loss: {lossdict["contrastive"]}')
+
         scheduler.step()
+        if loss <= best_loss:
+            best_loss = loss
+            patience_counter = 0
+            torch.save(model.state_dict(), 'best_model.pth')
+        else:
+            patience_counter += 1
+            if patience_counter >= patience:
+                model.load_state_dict(torch.load('best_model.pth'))
+                logging.info('Early Stopping trigered, best model recovered!')
+                break
+            
 
         
     model.eval()
-    model.validation_step()
-    logging.info("Wrote contigs into bins")
+    with torch.no_grad():
+        for batch in val_loader:
+            model.validation_step(batch)
+
+    # logging.info("Wrote contigs into bins")
+    logging.info("Latent saved")
     logging.info('Finish training!')
 
     # Training include early stopping(deactivated)
     # patience_counter = 0
     # best_coverage = 0
     # patience = 5
-    # epoch_c = 0
     # gmmcsv_path = os.path.join(args.output, 'results/gmm.csv')
     # gmmcsv_best_path = os.path.join(args.output, 'results/gmm_best.csv')
     # metrics = []

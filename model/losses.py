@@ -126,68 +126,21 @@ class LossFunctions:
         torch.mul((1 - adj_matrix), torch.log(1 - reconstruct_graph))).sum()
       return loss
 
+    def info_nce_loss(self, embeddings, temperature = 0.5, n_views=6):
 
-    def contrastive_loss(self, features, temperature=0.5, group_size=6):
-        """
-        Compute contrastive loss with multiple positives per anchor.
-        Assumes that features are already normalized.
-        """
-        # Calculate similarity matrix
+        embeddings = embeddings.unsqueeze(1)
+        cosine_similarity = torch.nn.CosineSimilarity(dim=2)
+        similarity_matrix = cosine_similarity(embeddings, embeddings.transpose(0, 1)) / temperature
+        similarity_matrix = similarity_matrix - torch.diag(similarity_matrix.diag())
 
-        similarity_matrix = torch.matmul(features, features.T)
+        # embeddings = F.normalize(embeddings, dim=1)
 
-        # Get the batch size and fill the mask
-        batch_size = features.shape[0]
-        full_mask = torch.zeros((batch_size, batch_size), dtype=torch.bool, device=features.device)
-        
-        # Fill the mask with group_size positives per anchor
-        for i in range(0, batch_size, group_size):
-            full_mask[i:i+group_size, i:i+group_size] = 1
+        # similarity_matrix = torch.matmul(embeddings, embeddings.T)
 
-        # Set the diagonal to 0
-        diag_mask = torch.eye(batch_size, dtype=torch.bool, device=features.device)
-        full_mask[diag_mask] = 0
+        batch_size = embeddings.shape[0] // n_views
 
-        # Calculate the loss
-        exp_sim = torch.exp(similarity_matrix / temperature)
-        sum_exp_sim = torch.sum(exp_sim, dim=1, keepdim=True)
+        labels = torch.arange(0, batch_size, device=embeddings.device)
+        labels = labels.repeat_interleave(n_views)
 
-        # Sum the positives
-        positive_sum = torch.sum(exp_sim * full_mask, dim=1, keepdim=True)
-        loss = -torch.log(positive_sum / sum_exp_sim).mean()
-
+        loss = F.cross_entropy(similarity_matrix, labels)
         return loss
-    
-    def info_nce_loss(self, features, temperature = 0.5, n_views=6):
-        """
-        Calculate the InfoNCE loss for SimCLR.
-
-        :param features: Input features.
-        :return: Logits and labels for the loss.
-        """
-        labels = torch.cat([torch.arange(len(features)) for i in range(n_views)], dim=0)
-        labels = (labels.unsqueeze(0) == labels.unsqueeze(1)).float()
-        # labels = labels.to(self.args.device)
-
-        features = F.normalize(features, dim=1)
-
-        similarity_matrix = torch.matmul(features, features.T)
-
-        # discard the main diagonal from both: labels and similarities matrix
-        mask = torch.eye(labels.shape[0], dtype=torch.bool)
-        labels = labels[~mask].view(labels.shape[0], -1)
-        similarity_matrix = similarity_matrix[~mask].view(similarity_matrix.shape[0], -1)
-        # assert similarity_matrix.shape == labels.shape
-
-        # select and combine multiple positives
-        positives = similarity_matrix[labels.bool()].view(-1, 1)
-        # select only the negatives the negatives
-        negatives = similarity_matrix[~labels.bool()].view(similarity_matrix.shape[0], -1)
-        negatives = negatives[:, None].expand(-1, n_views - 1, -1).flatten(0, 1)
-
-        logits = torch.cat([positives, negatives], dim=1)
-        labels = torch.zeros(logits.shape[0], dtype=torch.long)
-
-        logits = logits / temperature
-        criterion = torch.nn.CrossEntropyLoss()
-        return criterion(logits, labels)

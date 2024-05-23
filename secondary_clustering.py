@@ -396,24 +396,30 @@ if __name__ == "__main__":
 
     os.makedirs(args.output_path, exist_ok=True)
 
-    fasta_bin = glob.glob(os.path.join(args.primary_out, 'results', 'pre_bins', 'cluster.*.fasta'))
+    # fasta_bin = glob.glob(os.path.join(args.primary_out, 'results', 'pre_bins', 'cluster.*.fasta'))
     contignames = np.load(args.contigname_path)['arr_0']
     latent = np.load(os.path.join(args.primary_out, 'results', 'latent.npy'))
-    bin_dict = read_bins(os.path.join(args.primary_out, 'results', 'gmm.csv'))
-    must_link = read_must_link(os.path.join(args.primary_out, 'must_link.csv'), contignames)
-    issue_bins = get_issue_bins(os.path.join(args.primary_out, 'results', 'pre_bins', 'checkm.tsv'))
+
+    indices_to_save = np.arange(0, len(contignames), 6)
+
+    contignames = contignames[indices_to_save]
+    latent = latent[indices_to_save]
+    # bin_dict = read_bins(os.path.join(args.primary_out, 'results', 'gmm.csv'))
+    # must_link = read_must_link(os.path.join(args.primary_out, 'must_link.csv'), contignames)
+    # issue_bins = get_issue_bins(os.path.join(args.primary_out, 'results', 'pre_bins', 'checkm.tsv'))
+
     # issue_bins = [0, 11, 17, 23, 25, 26, 29, 39, 6, 9, 31,18, 30, 12]
     # post_bin_list = []
 
 
     # use scanpy.leiden
-    # anndata = ad.AnnData(X=latent)
-    # anndata.obs_names = contignames
-    # leiden_clustered= leiden_clustering_scanpy(anndata)
-    # labels = leiden_clustered.obs['leiden'].values
+    anndata = ad.AnnData(X=latent)
+    anndata.obs_names = contignames
+    leiden_clustered= leiden_clustering_scanpy(anndata)
+    labels = leiden_clustered.obs['leiden'].values
     
     # use leidenalg
-    labels = cluster(latent, threads = 120, contignames = contignames, max_edges=100)
+    # labels = cluster(latent, threads = 120, contignames = contignames, max_edges=100)
 
     # for bin_path in fasta_bin:
     #     cluster_num = int(os.path.basename(bin_path).replace('cluster.','').replace('.fasta', ''))
@@ -440,7 +446,8 @@ if __name__ == "__main__":
         for key, val in zip(labels, contignames):
             f.write(f'{str(val)}\t{str(key)}\n')
 
-    get_binning_result(args.contig_path, os.path.join(args.output_path, f'post_cluster.csv'), os.path.join(args.output_path, 'secondary_bins'))
+    get_binning_result('/datahome/datasets/ericteam/csgyguo/DeepMetaBin/deepmetabin_out/aug0/sequences_combined.fasta', os.path.join(args.output_path, f'post_cluster.csv'), os.path.join(args.output_path, 'secondary_bins'))
+    # get_binning_result(args.contig_path, os.path.join(args.output_path, f'post_cluster.csv'), os.path.join(args.output_path, 'secondary_bins'))
     
     
 

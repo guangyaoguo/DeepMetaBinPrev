@@ -23,7 +23,7 @@ from sklearn.mixture import GaussianMixture
 import os
 import logging
 import pprint
-
+import sys
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
 import torch.nn as nn
@@ -1185,3 +1185,63 @@ def coverage_score(path):
     recall = filtered_df['length_ratio'].mean()
 
     return 2*recall*precision/(recall+precision)
+
+def file_len(fname):
+    with open(fname) as f:
+        for i, l in enumerate(f):
+            pass
+    return i + 1
+
+def gen_seed(logger, contig_file: str, threads: int, contig_length_threshold: int,
+             marker_name: str = "marker", quarter: str = "3quarter"):
+    """
+    Generate seed sequences from contigs using FragGeneScan, HMMsearch, and custom markers.
+
+    :param contig_file: Path to the input contig file.
+    :param threads: The number of threads to use for processing.
+    :param contig_length_threshold: The contig length threshold.
+    :param marker_name: The marker name (default: "marker").
+    :param quarter: The quarter identifier (default: "3quarter").
+    :return: The number of candidate seeds generated.
+    """
+    fragScanURL = 'run_FragGeneScan.pl'
+
+    hmmExeURL = 'hmmsearch'
+    markerExeURL = os.path.join(os.getcwd(), '../auxiliary', 'test_getmarker_' + quarter + '.pl')
+    markerURL = os.path.join(os.getcwd(), '../auxiliary', marker_name + '.hmm')
+    seedURL = contig_file + "." + marker_name + "." + quarter + "_lencutoff_" + str(contig_length_threshold) + ".seed"
+    fragResultURL = contig_file + ".frag.faa"
+    hmmResultURL = contig_file + '.' + marker_name + ".hmmout"
+
+    if not (os.path.exists(fragResultURL)):
+        fragCmd = fragScanURL + " -genome=" + contig_file + " -out=" + contig_file + ".frag -complete=0 -train=complete -thread=" + str(
+            threads) + " 1>" + contig_file + ".frag.out 2>" + contig_file + ".frag.err"
+        logger.info("exec cmd: " + fragCmd)
+        os.system(fragCmd)
+
+    if os.path.exists(fragResultURL):
+        if not (os.path.exists(hmmResultURL)):
+            hmmCmd = hmmExeURL + " --domtblout " + hmmResultURL + " --cut_tc --cpu " + str(
+                threads) + " " + markerURL + " " + fragResultURL + " 1>" + hmmResultURL + ".out 2>" + hmmResultURL + ".err"
+            logger.info("exec cmd: " + hmmCmd)
+            os.system(hmmCmd)
+
+        if os.path.exists(hmmResultURL):
+            if not (os.path.exists(seedURL)):
+                markerCmd = markerExeURL + " " + hmmResultURL + " " + contig_file + " " + str(
+                    contig_length_threshold) + " " + seedURL
+                logger.info("exec cmd: " + markerCmd)
+                os.system(markerCmd)
+
+            if os.path.exists(seedURL):
+                candK = file_len(seedURL)
+            else:
+                logger.info("markerCmd failed! Not exist: " + markerCmd)
+                candK = 0
+        else:
+            logger.info("Hmmsearch failed! Not exist: " + hmmResultURL)
+            sys.exit()
+    else:
+        logger.info("FragGeneScan failed! Not exist: " + fragResultURL)
+        sys.exit()
+    return candK

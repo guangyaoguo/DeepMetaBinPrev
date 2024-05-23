@@ -214,7 +214,7 @@ def run(outdir, fastapath, bampaths, rpkmpath, jgipath,
     log('Date and time is ' + str(datetime.datetime.now()), logfile, 1)
     begintime = time.time()
 
-    num_bins = cal_num_bins(fastapath, mincontiglength, 20, output=outdir + '/tmp_hmmsearch') * 7 // 8
+    num_bins = cal_num_bins(fastapath, mincontiglength, 20, output=outdir + '/tmp_hmmsearch')
     # Get TNFs, save as npz
     tnfs, contignames, contiglengths = calc_tnf(outdir, fastapath, mincontiglength, logfile)
 

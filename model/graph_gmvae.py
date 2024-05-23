@@ -69,7 +69,7 @@ class DeepMetaBinModel(nn.Module):
             # self.num_classes = 10
             self.num_classes = root.attrs["num_bins"]//2
 
-        # self.num_classes = 50
+        self.num_classes = 50
         
         self.network = GMVAENet(
             x_dim = input_size,
@@ -108,7 +108,7 @@ class DeepMetaBinModel(nn.Module):
 
         loss_total = self.w_rec * loss_rec + self.w_gauss * loss_gauss + self.w_cat * loss_cat +self.w_cl * loss_cl
         # loss_total = self.w_rec * loss_rec + self.w_gauss * loss_gauss + self.w_cat * loss_cat
-
+        # loss_total = loss_cl
         predicted_clusters = prob_cat.argmax(-1)
         highest_probs = prob_cat.max(-1).values
         loss_dict = {
@@ -138,7 +138,7 @@ class DeepMetaBinModel(nn.Module):
         gaussian_loss = loss_dict["gaussian"]
         categorical_loss = loss_dict["categorical"]
         contrastive_loss = loss_dict["contrastive"]
-        print("loss: ", loss.item(), "rec_loss: ", reconstruction_loss.item(), "gaussian_loss: ", gaussian_loss.item(), "categorical_loss: ", categorical_loss.item(), "contrastive_loss: ", contrastive_loss.item())
+        # print("loss: ", loss.item(), "rec_loss: ", reconstruction_loss.item(), "gaussian_loss: ", gaussian_loss.item(), "categorical_loss: ", categorical_loss.item(), "contrastive_loss: ", contrastive_loss.item())
         # self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=False)
         # self.log("train/reconstruction_loss", reconstruction_loss, on_step=False, on_epoch=True, prog_bar=False)
         # self.log("train/gaussian_loss", gaussian_loss, on_step=False, on_epoch=True, prog_bar=False)
@@ -159,7 +159,7 @@ class DeepMetaBinModel(nn.Module):
         # loss += loss_rec_neigh
         # self.log("train/rec_neigh_loss", loss_rec_neigh, on_step=False, on_epoch=True, prog_bar=False)
         # self.count += 1
-        return {"loss": loss}
+        return {"loss": loss_dict}
     
     def test_step(self):
         pass
@@ -198,8 +198,8 @@ class DeepMetaBinModel(nn.Module):
         # mask = mask['arr_0']
         # contignames = ['NODE_'+str(m) for m in contignames]
 
-        fit_gmm(latent_feature, contignames, os.path.join(self.result_path, 'gmm.csv'), self.num_classes)
-        get_binning_result(self.contig_path, os.path.join(self.result_path, 'gmm.csv'), os.path.join(self.result_path, 'pre_bins'))
+        # fit_gmm(latent_feature, contignames, os.path.join(self.result_path, 'gmm.csv'), self.num_classes)
+        # get_binning_result(self.contig_path, os.path.join(self.result_path, 'gmm.csv'), os.path.join(self.result_path, 'pre_bins'))
 
     def rec_best_gmm(self):
         get_binning_result(self.contig_path, os.path.join(self.result_path, 'gmm.csv'), os.path.join(self.result_path, 'pre_bins'))
