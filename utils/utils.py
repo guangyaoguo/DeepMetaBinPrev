@@ -1160,10 +1160,11 @@ def coverage_score(path):
     df['length'] = df['contig'].str.extract(r'length_(\d+)_').astype(int)
     # for true label
     df['taxid'] = df['contig'].str.extract(r'taxid\|(.*)')
-    # df = df[df['taxid'] != '000000000']
+    df = df[df['taxid'] != '0']
+    
     # for kraken labels
     # df['taxid'] = df['contig'].str.extract(r'kraken:taxid\|(\d+)')
-    df = df[df['taxid'] != '0']
+    
 
     df2 = df.copy()
     max_length_per_taxid_cluster = df.groupby(['cluster', 'taxid'])['length'].sum().reset_index()

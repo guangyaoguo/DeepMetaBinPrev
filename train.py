@@ -1,215 +1,258 @@
-import os
-import os.path as osp
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader
-from datetime import datetime
-from tqdm import tqdm
-import argparse
-from pathlib import Path
-import numpy as np
-import zarr
-from pathlib import Path
+#!/usr/bin/env bash
 
-from utils.cov import coverage_score as cov
+##############################################################################################################################################################
+#
+# This script is meant to be run on the contigs and the sequencing reads to generate coverage information
+# Ideally it should take in the assembly file of all of your samples, followed by the reads of all the samples that went into the assembly.
 
-from utils.utils import seed_everything, Wandb_logger, _optimizer, coverage_score
-from model.pipeline import Pipeline
-from model.graph_gmvae import DeepMetaBinModel
-import shutil
-
-def main():
-    ######Hyperparameters######
-    parser = argparse.ArgumentParser()
-    # model
-    parser.add_argument("--GPU", default=0, type=int, help="GPU index")
-
-    parser.add_argument("--KNN", "-k", default=3, type=int, help="K-nearest neighbor")
-
-    parser.add_argument("--learning_rate", "-lr", default=1e-4, type=float, help="Learning rate")
-    parser.add_argument("--weight_decay", default=0, type=float, help="Weight decay for optimizer")
-    parser.add_argument("--w_cat", default=0.000156, type=float, help="Weight for Categorical loss")
-    parser.add_argument("--w_gauss", default=1, type=float, help="Weight for Gaussian loss")
-    parser.add_argument("--w_rec", default=1, type=float, help="Weight for Reconstruction loss")
-    parser.add_argument("--w_cl", default=1, type=float, help="Weight for Contrastive loss")
-    parser.add_argument("--input_size", default=104, type=int, help="Input feature size")
-    parser.add_argument("--gaussian_size", default=2048, type=int, help="Embed size")
-    parser.add_argument("--sigma", default=1.0, type=float, help="The sigma for Gassian kernal")
-
-    #data
-    parser.add_argument("--seed", type=int, default=2024, help="Seed")
-    parser.add_argument("--wandb", type=str, default='disabled', choices=['online', 'offline', 'disabled', 'dryrun'])
-    parser.add_argument("--zarr_dataset_path", '-data', type=str, default='', help="Dataset zarr path")
-    parser.add_argument("--contignames_path", type=str, default='./sample_data/contignames.npz', help="Contigname path")
-    parser.add_argument("--contig_path", type=str, default='./sample_data/contigs.fasta', help="Contig fasta path")
-    parser.add_argument("--exp_name", "-exp", type=str, default='time', help="Name for this experiment")
-    parser.add_argument("--batch_size", "-b", type=int, default=420, help="Batch size for NN")
-    parser.add_argument("--num_workers", type=int, default=50, help="Number of workers")
-    parser.add_argument("--output", type=str, default="./deepmetabin_out", help="Output for deepmetabin")
-    parser.add_argument("--num_epoch", "-e", type=int, default=500, help="Epoch for NN")
-    parser.add_argument("--multisample", type=bool, default=False, help="Multi-sample or single-sample")
-    args = parser.parse_args()
-
-    ######Initialization######
-    if args.exp_name == 'time':
-        args.exp_name = datetime.now().strftime("%Y%m%d%H%M%S")
-    working_dir = os.path.join('./exp', args.exp_name)
-    Path(working_dir).mkdir(parents=True, exist_ok=True)
-    logging = Wandb_logger(cfg=vars(args), working_dir=working_dir)
-    if torch.cuda.is_available():
-        gpu_index = args.GPU
-        device = f"cuda:{gpu_index}"
-    else:
-        device = "cpu"
-    seed_everything(args.seed)
-
-    ######Pipeline######
-
-    os.makedirs(args.output, exist_ok=True)
-    pip = Pipeline(zarr_dataset_path=args.zarr_dataset_path,
-                   k=args.KNN,
-                   sigma=args.sigma,
-                   multisample=args.multisample,
-                   must_link_path=osp.join(args.output, 'must_link.csv')
-                   )
-    dataloader = DataLoader(
-                    dataset=pip,
-                    batch_size=args.batch_size,
-                    num_workers=args.num_workers,
-                    pin_memory=False,
-                    shuffle=True,
-                    )
-    val_loader = DataLoader(
-                    dataset=pip,
-                    batch_size=len(pip),
-                    num_workers=args.num_workers,
-                    pin_memory=False,
-                    shuffle=False,
-                    )
-
-    model = DeepMetaBinModel(input_size=args.input_size,
-                             gaussian_size=args.gaussian_size,
-                             w_cat=args.w_cat,
-                             w_gauss=args.w_gauss,
-                             w_rec=args.w_rec,
-                             w_cl=args.w_cl,
-                             zarr_dataset_path=args.zarr_dataset_path,
-                             contignames_path=args.contignames_path,
-                             log_path=args.output,
-                            #  use_gmm=True
-                             k=args.KNN,
-                             result_path=osp.join(args.output, 'results'),
-                             contig_path=args.contig_path
-                             )
-    scheduler, optimizer = _optimizer(model=model, 
-                        lr=args.learning_rate, 
-                        weight_decay=args.weight_decay, 
-                        epoch=args.num_epoch)
-     ######Training the model######
-    logging.info("Start Training...")
+# Some of the programs this pipeline uses are from the binning.sh file in MetaWRAP.
+##############################################################################################################################################################
 
 
-    best_loss = float('inf')
-    patience = 5
-    patience_counter = 0
-    for epoch in range(args.num_epoch):
-        logging.info(f"Epoch ({epoch}/{args.num_epoch})")
-        model.train()
-        for i, batch in enumerate(tqdm(dataloader, ncols=80, desc='Training')):
-            optimizer.zero_grad()
-            lossdict = model.training_step(batch, i)['loss']
-            loss = lossdict["total"]
-            # logging.logging_with_step('loss', loss, epoch * len(dataloader) + i)
-            loss.backward()
-            optimizer.step()
-            # logging.info(f'loss: {lossdict["total"]}, cat_loss: {lossdict["categorical"]}, gauss_loss: {lossdict["gaussian"]}, rec_loss: {lossdict["reconstruction"]}, cl_loss: {lossdict["contrastive"]}')
-        logging.info(f'loss: {lossdict["total"]}, cat_loss: {lossdict["categorical"]}, gauss_loss: {lossdict["gaussian"]}, rec_loss: {lossdict["reconstruction"]}, cl_loss: {lossdict["contrastive"]}')
+help_message () {
+	echo ""
+	echo "Usage: bash gen_coverage_file.sh [options] -a assembly.fa -o output_dir readsA_1.fastq readsA_2.fastq ... [readsX_1.fastq readsX_2.fastq]"
+	echo "Note1: Make sure to provide all your separately replicate read files, not the joined file."
+	echo "Note2: You may provide single end or interleaved reads as well with the use of the correct option"
+	echo "Note3: If the output already has the .bam alignments files from previous runs, the module will skip re-aligning the reads"
+	echo ""
+	echo "Options:"
+	echo ""
+	echo "	-a STR    metagenomic assembly file"
+	echo "	-o STR    output directory (to save the coverage files)"
+	echo "	-b STR    directory for the bam files"
+	echo "	-t INT    number of threads (default=1)"
+	echo "	-m INT		amount of RAM available (default=4)"
+	echo "	-l INT		minimum contig length to bin (default=1000bp)."
+	echo "	--single-end	non-paired reads mode (provide *.fastq files)"
+	echo "	--interleaved	the input read files contain interleaved paired-end reads"
+	echo "	-f STR    Forward read suffix for paired reads (default="_1.fastq")"
+	echo "	-r STR    Reverse read suffix for paired reads (default="_2.fastq")"
+	echo "";}
 
-        scheduler.step()
-        if loss <= best_loss:
-            best_loss = loss
-            patience_counter = 0
-            torch.save(model.state_dict(), 'best_model.pth')
-        else:
-            patience_counter += 1
-            if patience_counter >= patience:
-                model.load_state_dict(torch.load('best_model.pth'))
-                logging.info('Early Stopping trigered, best model recovered!')
-                break
-            
 
-        
-    model.eval()
-    with torch.no_grad():
-        for batch in val_loader:
-            model.validation_step(batch)
+########################################################################################################
+########################               LOADING IN THE PARAMETERS                ########################
+########################################################################################################
 
-    # logging.info("Wrote contigs into bins")
-    logging.info("Latent saved")
-    logging.info('Finish training!')
+# setting scripts and databases from config file (should be in same folder as main script)
+#config_file=$(which config-metawrap)
+#source $config_file
 
-    # Training include early stopping(deactivated)
-    # patience_counter = 0
-    # best_coverage = 0
-    # patience = 5
-    # gmmcsv_path = os.path.join(args.output, 'results/gmm.csv')
-    # gmmcsv_best_path = os.path.join(args.output, 'results/gmm_best.csv')
-    # metrics = []
-    # for epoch in range(args.num_epoch):
-    #     logging.info(f"Epoch ({epoch}/{args.num_epoch})")
-    #     model.train()
-    #     for i, batch in enumerate(tqdm(dataloader, ncols=80, desc='Training')):
-    #         optimizer.zero_grad()
-    #         loss = model.training_step(batch, i)['loss']
-    #         logging.logging_with_step('loss', loss, epoch * len(dataloader) + i)
-    #         loss.backward()
-    #         optimizer.step()
-    #     logging.info(f'loss: {loss}')
-    #     scheduler.step()
+SOFT="$( cd "$( dirname "$0"  )" && pwd  )"
 
-    #     model.eval()
-    #     if epoch_c >= 100 and epoch_c % 5 == 0:
-    #         with torch.no_grad():
-    #             for batch in val_loader:
-    #                 model.validation_step(batch)
-    #                 metrics.append(cov(gmmcsv_path))
-            
-    #         coverage = coverage_score(gmmcsv_path)
 
-    #         if coverage >= best_coverage:
-    #             best_coverage = coverage
-    #             patience_counter = 0
-    #             torch.save(model.state_dict(), 'best_model.pth')
-    #             shutil.copy(gmmcsv_path, gmmcsv_best_path)
-    #         else:
-    #             patience_counter += 1
-    #             if patience_counter >= patience:
-    #                 model.load_state_dict(torch.load('best_model.pth'))
-                    
-    #                 model.eval()
-    #                 with torch.no_grad():
-    #                     for batch in val_loader:
-    #                         model.validation_step(batch)
-                    
-    #                 logging.info('Early stopping triggered, best model restored')
-    #                 shutil.copy(gmmcsv_best_path, gmmcsv_path)
-    #                 model.rec_best_gmm()
-
-    #                 metrics.append(cov(gmmcsv_path))
-    #                 # Write metrics into a CSV file
-    #                 metrics_path = os.path.join(args.output, 'metrics.csv')
-    #                 metrics_array = np.array(metrics)
-    #                 np.savetxt(metrics_path, metrics_array, delimiter=',', fmt='%1.8f')
-
-    #                 break
-    #     epoch_c += 1
-        # logging.info("Wrote contigs into bins")
-        # logging.info('Finish training!')
-    
-
-    
+#/home/wangzy/tools/test_tool/metabinner/scripts
+chmod +x ${SOFT}/print_comment.py
+comm () { ${SOFT}/print_comment.py "$1" "-"; }
+error () { ${SOFT}/print_comment.py "$1" "*"; exit 1; }
+warning () { ${SOFT}/print_comment.py "$1" "*"; }
+announcement () { ${SOFT}/print_comment.py "$1" "#"; }
 
 
 
-if __name__ == '__main__':
-    main()
+# default params
+threads=1; mem=4; len=1000; out=false; ASSEMBLY=false; bout=false
+# long options defaults
+read_type=paired
+
+F_reads_suffix=_1.fastq
+R_reads_suffix=_2.fastq
+
+# load in params
+
+# loop through input params
+while true; do
+        case "$1" in
+                -t) threads=$2; shift 2;;
+		            -m) mem=$2; shift 2;;
+                -o) out=$2; shift 2;;
+                -b) bout=$2; shift 2;;
+                -a) ASSEMBLY=$2; shift 2;;
+		            -l) len=$2; shift 2;;
+		            -f) F_reads_suffix=$2; shift 2;;
+		            -r) R_reads_suffix=$2; shift 2;;
+                -h | --help) help_message; exit 1; shift 1;;
+		            --single-end) read_type=single; shift 1;;
+		            --interleaved) read_type=interleaved; shift 1;;
+                --) help_message; exit 1; shift; break ;;
+                *) break;;
+        esac
+done
+
+echo ${threads}
+echo ${len}
+#exit 1
+########################################################################################################
+########################           MAKING SURE EVERYTHING IS SET UP             ########################
+########################################################################################################
+# Make sure at least one binning method was chosen
+
+# check if all parameters are entered
+if [ $out = false ] || [ $ASSEMBLY = false ] ; then
+	comm "Non-optional parameters -a and/or -o were not entered"
+	help_message; exit 1
+fi
+
+#check if the assembly file exists
+if [ ! -s $ASSEMBLY ]; then error "$ASSEMBLY does not exist. Exiting..."; fi
+
+#check if  parameter for bout dir is entered
+if [[ $bout = false ]]; then
+bout=${out}/work_files
+#comm ${bout}
+fi
+
+
+comm "Entered read type: $read_type"
+
+if [ $read_type = paired ]; then
+	# check for at least one pair of read fastq files:
+	F="no"; R="no"
+	for num in "$@"; do
+		if [[ $num == *${F_reads_suffix} ]]; then F="yes"; fi
+		if [[ $num == *${R_reads_suffix} ]]; then R="yes"; fi
+	done
+	if [ $F = "no" ] || [ $R = "no" ]; then
+		comm "Unable to find proper fastq read pair in the format *${F_reads_suffix} and *${R_reads_suffix}"
+		help_message; exit 1
+	fi
+else
+	# check for at least one fastq read
+	F="no"
+	for num in "$@"; do
+		if [[ $num == *".fastq" ]]; then F="yes"; fi
+	done
+	if [ $F = "no" ]; then
+		comm "Unable to find read files in format *.fastq (for single-end or interleaved reads)"
+		help_message; exit 1
+	fi
+fi
+
+if [ $read_type = paired ]; then
+	#determine number of fastq read files provided:
+	num_of_F_read_files=$(for I in "$@"; do echo $I | grep ${F_reads_suffix}; done | wc -l)
+	num_of_R_read_files=$(for I in "$@"; do echo $I | grep ${R_reads_suffix}; done | wc -l)
+
+	comm "$num_of_F_read_files forward and $num_of_R_read_files reverse read files detected"
+	if [ ! $num_of_F_read_files == $num_of_R_read_files ]; then error "Number of F and R reads must be the same!"; fi
+fi
+
+
+########################################################################################################
+########################                    BEGIN PIPELINE!                     ########################
+########################################################################################################
+
+
+########################################################################################################
+########################         ALIGNING READS TO MAKE COVERAGE FILES          ########################
+########################################################################################################
+announcement "ALIGNING READS TO MAKE COVERAGE FILES"
+
+# setting up the output folder
+if [ ! -d $out ]; then mkdir $out;
+else
+	echo "Warning: $out already exists."
+fi
+
+if [ ! -d ${out}/work_files ]; then mkdir ${out}/work_files; fi
+if [ ! -d ${bout} ]; then mkdir ${bout}; fi
+
+if [ -f ${out}/work_files/assembly.fa ]; then
+	comm "Looks like the assembly file is already coppied, but will re-transfer just in case to avoid truncation problems."
+	cp $ASSEMBLY ${out}/work_files/assembly.fa
+else
+	comm "making copy of assembly file $ASSEMBLY"
+	cp $ASSEMBLY ${out}/work_files/assembly.fa
+fi
+
+tmp=${ASSEMBLY##*/}
+sample=${tmp%.*}
+
+# Index the assembly
+if [ -f ${out}/work_files/assembly.fa.bwt ]; then
+	comm "Looks like there is a index of the assembly already. Skipping..."
+else
+	comm "Indexing assembly file"
+	bwa index ${out}/work_files/assembly.fa
+	if [[ $? -ne 0 ]] ; then error "Something went wrong with indexing the assembly. Exiting."; fi
+fi
+
+# If there are several pairs of reads passed, they are processed sepperately
+for num in "$@"; do
+	# paired end reads
+	if [ $read_type = paired ]; then
+		if [[ $num == *"${F_reads_suffix}"* ]]; then
+			reads_1=$num
+			reads_2=${num%${F_reads_suffix}}${R_reads_suffix}
+			if [ ! -s $reads_1 ]; then error "$reads_1 does not exist. Exiting..."; fi
+			if [ ! -s $reads_2 ]; then error "$reads_2 does not exist. Exiting..."; fi
+
+			tmp=${reads_1##*/}
+			sample=${tmp%${F_reads_suffix}}
+
+			if [[ ! -f ${bout}/${sample}.bam ]]; then
+				comm "Aligning $reads_1 and $reads_2 back to assembly"
+				bwa mem -v 1 -t $threads ${out}/work_files/assembly.fa $reads_1 $reads_2 > ${bout}/${sample}.sam
+				if [[ $? -ne 0 ]]; then error "Something went wrong with aligning $reads_1 and $reads_2 reads to the assembly. Exiting"; fi
+
+				comm "Sorting the $sample alignment file"
+				samtools sort -T ${out}/work_files/tmp-samtools -@ $threads -O BAM -o ${bout}/${sample}.bam ${bout}/${sample}.sam
+				if [[ $? -ne 0 ]]; then error "Something went wrong with sorting the alignments. Exiting..."; fi
+				rm ${bout}/${sample}.sam
+			else
+				comm "skipping aligning $sample reads to assembly because ${bout}/${sample}.bam already exists."
+			fi
+		fi
+
+	# single end or interleaved reads
+	else
+		if [[ $num == *".fastq"* ]]; then
+			reads=$num
+			if [ ! -s $reads ]; then error "$reads does not exist. Exiting..."; fi
+			tmp=${reads##*/}
+			sample=${tmp%.*}
+			if [[ ! -f ${bout}/${sample}.bam ]]; then
+				comm "Aligning $reads back to assembly, and sorting the alignment"
+				if [ $read_type = single ]; then
+					bwa mem -t $threads ${out}/work_files/assembly.fa $reads > ${bout}/${sample}.sam
+					if [[ $? -ne 0 ]]; then error "Something went wrong with aligning the reads to the assembly!"; fi
+				elif [ $read_type = interleaved ]; then
+					bwa mem -v 1 -p -t $threads ${out}/work_files/assembly.fa $reads > ${bout}/${sample}.sam
+					if [[ $? -ne 0 ]]; then error "Something went wrong with aligning the reads to the assembly!"; fi
+				else
+					error "something from with the read_type (=$read_type)"
+				fi
+
+				comm "Sorting the $sample alignment file"
+				samtools sort -T ${out}/work_files/tmp-samtools -@ $threads -O BAM -o ${bout}/${sample}.bam ${bout}/${sample}.sam
+				if [[ $? -ne 0 ]]; then error "Something went wrong with sorting the alignments. Exiting..."; fi
+				rm ${bout}/${sample}.sam
+			else
+				comm "skipping aligning $sample reads to assembly because ${bout}/${sample}.bam already exists."
+			fi
+		fi
+	fi
+done
+
+announcement "The process of generating bam files finished!!!"
+
+#
+##if [ $maxbin2 = true ]; then
+##        ########################################################################################################
+##        ########################                   Making contig depth                    ########################
+##        ########################################################################################################
+##        announcement "Making contig depth "
+#
+#comm "making contig depth file..."
+#      ${SOFT}/jgi_summarize_bam_contig_depths --outputDepth ${out}/work_files/mb2_master_depth.txt --noIntraDepthVariance ${bout}/*.bam
+#      if [[ $? -ne 0 ]]; then error "Something went wrong with making contig depth file. Exiting."; fi
+#
+#
+#cat ${out}/work_files/mb2_master_depth.txt | cut -f -1,4- > ${out}/coverage_profile.tsv
+##cat ${out}/work_files/mb2_master_depth.txt | awk '{if ($2>1000) print $0 }' | cut -f -1,4- > ${out}/coverage_profile_f1k.tsv
+#cat ${out}/work_files/mb2_master_depth.txt | awk '{if ($2>'"$len"') print $0 }' | cut -f -1,4- > ${out}/coverage_profile_f${len}.tsv
+#########################################################################################################
+#########################      BINNING PIPELINE SUCCESSFULLY FINISHED!!!         ########################
+#########################################################################################################
+#announcement "The process of generating coverage pipeline finished!!!"
